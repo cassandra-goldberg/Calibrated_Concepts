@@ -1,0 +1,32 @@
+# Python files and cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Jupyter Notebook artifacts
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+.env/
+
+# Data files
+*.csv
+*.npy
+*.h5
+*.pkl
+
+# Logs
+*.log
+
+# Ignore JSON files
+*.json
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Other folders
+/data/
+/datasets/
+
