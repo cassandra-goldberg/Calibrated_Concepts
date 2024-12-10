@@ -11,7 +11,6 @@ __pycache__/
 .env/
 
 # Data files
-*.csv
 *.npy
 *.h5
 *.pkl
@@ -26,7 +25,7 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Other folders
-/data/
-/datasets/
-
+# Ignore all .jpeg and .png files
+*.jpeg
+*.jpg
+*.png
