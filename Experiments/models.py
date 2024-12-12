@@ -2,6 +2,7 @@ import numpy as np
 from scipy.optimize import minimize_scalar
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+from sklearn.linear_model import LogisticRegression
 
 # --------------------------
 # Utils
@@ -95,3 +96,32 @@ def get_individual_thresholds(metadata_df, cosine_similarity_df, verbose=True):
         if verbose:
             print(f'Concept: {concept.ljust(10)} | Threshold: {thresh:.3f} | Train error: {train_error:.3f} | Test error: {test_error:.3f}')
     return thresholds, train_errors, test_errors
+
+# --------------------------
+# Linear methods
+# --------------------------
+def get_concept_similarity_log_reg(metadata_df, cosine_similarity_df, concept):
+    X, y, concept_list = get_concept_X_y_list(metadata_df, cosine_similarity_df, concept)
+    model = LogisticRegression(random_state=42, penalty=None)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, 
+                                                        test_size=0.33, 
+                                                        random_state=42,
+                                                        stratify=concept_list)
+    model.fit(X_train, y_train)
+    y_train_pred = model.predict(X_train)
+    y_test_pred = model.predict(X_test)
+    train_error = 1 - accuracy_score(y_train, y_train_pred)
+    test_error = 1 - accuracy_score(y_test, y_test_pred)
+    return model, train_error, test_error
+
+def get_similarity_log_reg(metadata_df, cosine_similarity_df, verbose=True):
+    concepts = list(cosine_similarity_df.columns)
+    train_errors = {}
+    test_errors = {}
+    for concept in concepts:
+        _, train_error, test_error = get_concept_similarity_log_reg(metadata_df, cosine_similarity_df, concept)
+        train_errors[concept] = train_error
+        test_errors[concept] = test_error
+        if verbose:
+            print(f'Concept: {concept.ljust(10)} | Train error: {train_error:.3f} | Test error: {test_error:.3f}')
+    return train_errors, test_errors
