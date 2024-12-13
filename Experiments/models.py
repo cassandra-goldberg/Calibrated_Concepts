@@ -1,6 +1,5 @@
 import numpy as np
 from scipy.optimize import minimize_scalar
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LogisticRegression
 
@@ -8,11 +7,10 @@ from sklearn.linear_model import LogisticRegression
 # Utils
 # --------------------------
 
-def get_concept_X_y_list(metadata_df, cosine_similarity_df, concept):
+def get_concept_sim_X_y(metadata_df, cosine_similarity_df, concept):
     X = cosine_similarity_df[[concept]].to_numpy()
     y = (metadata_df[concept]==1).to_numpy().astype(int)
-    concept_list = metadata_df[concept]
-    return X, y, concept_list
+    return X, y
 
 # --------------------------
 # Threshold-based methods
@@ -41,18 +39,12 @@ class ThresholdModel:
 def get_global_threshold(metadata_df, cosine_similarity_df, verbose=True):
     X_train_list = []
     y_train_list = []
-    X_test_list = []
-    y_test_list = []
     concepts = list(cosine_similarity_df.columns)
     # Split data for each concept
     for concept in concepts:
-        X, y, concept_list = get_concept_X_y_list(metadata_df, cosine_similarity_df, concept)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42, 
-                                                            stratify=concept_list)
+        X_train, y_train = get_concept_sim_X_y(metadata_df, cosine_similarity_df, concept)
         X_train_list.append(X_train)
         y_train_list.append(y_train)
-        X_test_list.append(X_test)
-        y_test_list.append(y_test)
     # Concatenate train data
     X_train = np.concatenate(X_train_list, axis=0)
     y_train = np.concatenate(y_train_list)
@@ -61,90 +53,76 @@ def get_global_threshold(metadata_df, cosine_similarity_df, verbose=True):
     thresh, global_train_error = model.fit(X_train, y_train)
     if verbose:
         print(f'Global threshold: {thresh:.3f} | Train error: {global_train_error:.3f}')
-    # Evaluate on test data
-    test_errors = {}
+    
+    train_errors = {}
     for i, concept in enumerate(concepts):
-        y_test_pred = model.predict(X_test_list[i], thresh)
-        test_error = 1 - accuracy_score(y_test_list[i], y_test_pred)
-        test_errors[concept] = test_error
+        y_train_pred = model.predict(X_train_list[i])
+        train_error = 1 - accuracy_score(y_train_list[i], y_train_pred)
+        train_errors[concept] = train_error
         if verbose:
-            print(f'Concept: {concept.ljust(10)} | Test error: {test_error:.3f}')
-    return thresh, global_train_error, test_errors
+            print(f'Concept: {concept.ljust(10)} | Train error: {train_error:.3f}')
+    return model, global_train_error, train_errors
 
 def get_concept_threshold(metadata_df, cosine_similarity_df, concept):
-    X, y, concept_list = get_concept_X_y_list(metadata_df, cosine_similarity_df, concept)
+    X_train, y_train = get_concept_sim_X_y(metadata_df, cosine_similarity_df, concept)
     model = ThresholdModel()
-    X_train, X_test, y_train, y_test = train_test_split(X, y, 
-                                                        test_size=0.33, 
-                                                        random_state=42,
-                                                        stratify=concept_list)
     thresh, train_error = model.fit(X_train, y_train)
-    y_test_pred = model.predict(X_test, thresh)
-    test_error = 1 - accuracy_score(y_test, y_test_pred)
-    return thresh, train_error, test_error
+    return model, train_error
 
 def get_individual_thresholds(metadata_df, cosine_similarity_df, verbose=True):
     concepts = list(cosine_similarity_df.columns)
-    thresholds = {}
+    models = {}
     train_errors = {}
-    test_errors = {}
     for concept in concepts:
-        thresh, train_error, test_error = get_concept_threshold(metadata_df, cosine_similarity_df, concept)
-        thresholds[concept] = thresh
+        model, train_error = get_concept_threshold(metadata_df, cosine_similarity_df, concept)
+        models[concept] = model
         train_errors[concept] = train_error
-        test_errors[concept] = test_error
         if verbose:
-            print(f'Concept: {concept.ljust(10)} | Threshold: {thresh:.3f} | Train error: {train_error:.3f} | Test error: {test_error:.3f}')
-    return thresholds, train_errors, test_errors
+            print(f'Concept: {concept.ljust(10)} | Threshold: {model.thresh:.3f} | Train error: {train_error:.3f}')
+    return models, train_errors
 
 # --------------------------
 # Linear methods
 # --------------------------
-def train_evaluate_log_reg(X, y, concept_list):
-    X_train, X_test, y_train, y_test = train_test_split(X, y, 
-                                                        test_size=0.33, 
-                                                        random_state=42,
-                                                        stratify=concept_list)
+def train_log_reg(X_train, y_train):
     model = LogisticRegression(random_state=42, max_iter=1000)
     model.fit(X_train, y_train)
     y_train_pred = model.predict(X_train)
-    y_test_pred = model.predict(X_test)
     train_error = 1 - accuracy_score(y_train, y_train_pred)
-    test_error = 1 - accuracy_score(y_test, y_test_pred)
-    return model, train_error, test_error
+    return model, train_error
 
 def get_concept_similarity_log_reg(metadata_df, cosine_similarity_df, concept):
-    X, y, concept_list = get_concept_X_y_list(metadata_df, cosine_similarity_df, concept)
-    model, train_error, test_error = train_evaluate_log_reg(X, y, concept_list)
-    return model, train_error, test_error
+    X, y = get_concept_sim_X_y(metadata_df, cosine_similarity_df, concept)
+    model, train_error = train_log_reg(X, y)
+    return model, train_error
 
 def get_similarity_log_reg(metadata_df, cosine_similarity_df, verbose=True):
     concepts = list(cosine_similarity_df.columns)
+    models = {}
     train_errors = {}
-    test_errors = {}
     for concept in concepts:
-        _, train_error, test_error = get_concept_similarity_log_reg(metadata_df, cosine_similarity_df, concept)
+        model, train_error = get_concept_similarity_log_reg(metadata_df, cosine_similarity_df, concept)
         train_errors[concept] = train_error
-        test_errors[concept] = test_error
+        models[concept] = model
         if verbose:
-            print(f'Concept: {concept.ljust(10)} | Train error: {train_error:.3f} | Test error: {test_error:.3f}')
-    return train_errors, test_errors
+            print(f'Concept: {concept.ljust(10)} | Train error: {train_error:.3f}')
+    return models, train_errors
 
-def get_concept_embeddings_log_reg(embeddings, metadata_df, cosine_similarity_df, concept):
+def get_concept_embeddings_log_reg(embeddings, metadata_df, concept):
     X = embeddings
     y = (metadata_df[concept]==1).to_numpy().astype(int)
-    concept_list = metadata_df[concept]
-    model, train_error, test_error = train_evaluate_log_reg(X, y, concept_list)
-    return model, train_error, test_error
+    model, train_error = train_log_reg(X, y)
+    return model, train_error
 
 def get_embeddings_log_reg(embeddings, metadata_df, cosine_similarity_df, verbose=True):
     concepts = list(cosine_similarity_df.columns)
+    models = {}
     train_errors = {}
     test_errors = {}
     for concept in concepts:
-        _, train_error, test_error = get_concept_embeddings_log_reg(embeddings, metadata_df, cosine_similarity_df, concept)
+        model, train_error = get_concept_embeddings_log_reg(embeddings, metadata_df, concept)
         train_errors[concept] = train_error
-        test_errors[concept] = test_error
+        models[concept] = model
         if verbose:
-            print(f'Concept: {concept.ljust(10)} | Train error: {train_error:.3f} | Test error: {test_error:.3f}')
-    return train_errors, test_errors
+            print(f'Concept: {concept.ljust(10)} | Train error: {train_error:.3f}')
+    return models, train_errors
