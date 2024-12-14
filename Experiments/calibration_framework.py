@@ -1,8 +1,10 @@
 import torch
 from sklearn.calibration import CalibratedClassifierCV
-from scipy.optimize import minimize
-import numpy as np
+import torch.optim as optim
+import torch.nn as nn
 import pandas as pd
+import numpy as np
+import scipy.optimize.minimize
 
 ### Platt Scaling ###
 def apply_platt_scaling(base_model, X_cal, y_cal):
@@ -39,6 +41,7 @@ class TemperatureScaling(nn.Module):
     def predict(self, X):
         probabilities = self.predict_proba(X)
         return np.argmax(probabilities, axis=1)
+        
     
 
 def apply_temperature_scaling(base_model, X_cal, y_cal):
