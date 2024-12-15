@@ -28,7 +28,6 @@ class TemperatureScaling(nn.Module):
     def predict_scaled_logits(self, X):
         """Scale the logits of the base model using the current temperature."""
         original_logits = self.base_model.predict_proba(X) 
-        #print(original_logits[:5])
         scaled_logits = original_logits / self.temperature
         return scaled_logits
         
