@@ -4,7 +4,7 @@ import torch.optim as optim
 import torch.nn as nn
 import pandas as pd
 import numpy as np
-import scipy.optimize.minimize
+from scipy.optimize import minimize
 
 ### Platt Scaling ###
 def apply_platt_scaling(base_model, X_cal, y_cal):
@@ -28,7 +28,7 @@ class TemperatureScaling(nn.Module):
     def predict_scaled_logits(self, X):
         """Scale the logits of the base model using the current temperature."""
         original_logits = self.base_model.predict_proba(X) 
-        print(original_logits[:5])
+        #print(original_logits[:5])
         scaled_logits = original_logits / self.temperature
         return scaled_logits
         
@@ -44,7 +44,7 @@ class TemperatureScaling(nn.Module):
         
     
 
-def apply_temperature_scaling(base_model, X_cal, y_cal):
+def apply_temperature_scaling(base_model, X_cal, y_cal, verbose=True):
     """Train temperature scaling using negative log-likelihood. """
     
     temperature_model = TemperatureScaling(base_model)  # Initialize the temperature scaling model
@@ -62,7 +62,8 @@ def apply_temperature_scaling(base_model, X_cal, y_cal):
     result = minimize(nll_loss, x0=[1], bounds=[(1e-2, 10.0)], tol=1, method='L-BFGS-B')  # Temperature > 0
     
     # Store the optimal temperature
-    temperature_model.temperature = result.x[0]  
-    print(f"Optimal temperature: {temperature_model.temperature:.4f}")
+    temperature_model.temperature = result.x[0]
+    if verbose:
+        print(f"Optimal temperature: {temperature_model.temperature:.4f}")
     
     return temperature_model
