@@ -116,6 +116,7 @@ def compare_all_models_calibration_metric(base_models, m3_models_cal, m4_models_
     df = pd.concat([base_models_df, cal_m3_models_df, cal_m4_models_df, cal_m5_models_df])
     df = df.sort_values(by=['Model'])
     df = df.set_index(['Model','Calibration'])
+    df = df.round(3)
     return df
 
 def compare_all_models_calibration_avg(base_models, m3_models_cal, m4_models_cal, m5_models_cal,
@@ -145,6 +146,6 @@ def compare_all_models_calibration_concept(base_models, m3_models_cal, m4_models
         with pd.option_context("future.no_silent_downcasting", True):
             df = df.replace('-', np.nan).infer_objects(copy=False)
         series = df[concept]
-        metrics_df[metric] = series
-    metrics_df = metrics_df.fillna('-')
+        metrics_df[metric] = series.apply(lambda x: '{0:.3f}'.format(x))
+    metrics_df = metrics_df.replace('nan', '-')
     return metrics_df
