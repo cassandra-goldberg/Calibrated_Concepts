@@ -1,0 +1,15 @@
+Model,Calibration,accuracy,f1,auc,K1,K2,Kmax
+(M1) Global Threshold,None,1.000 ± 0.00,1.000 ± 0.00,-,-,-,-
+(M2) Individual Threshold,None,1.000 ± 0.00,1.000 ± 0.00,-,-,-,-
+(M3) Global Similarity LogReg,None,1.000 ± 0.00,1.000 ± 0.00,1.000 ± 0.00,0.666 ± 0.02,0.650 ± 0.03,0.649 ± 0.03
+(M3) Global Similarity LogReg,Platt,1.000 ± 0.00,1.000 ± 0.00,1.000 ± 0.00,0.667 ± 0.03,0.663 ± 0.03,0.663 ± 0.03
+(M3) Global Similarity LogReg,Isotonic,0.999 ± 0.00,0.999 ± 0.00,1.000 ± 0.00,0.001 ± 0.00,0.000 ± 0.00,0.001 ± 0.00
+(M3) Global Similarity LogReg,Temperature,1.000 ± 0.00,1.000 ± 0.00,1.000 ± 0.00,0.577 ± 0.01,0.377 ± 0.01,0.471 ± 0.03
+(M4) Individual Similarity LogReg,None,1.000 ± 0.00,1.000 ± 0.00,1.000 ± 0.00,0.666 ± 0.02,0.622 ± 0.03,0.612 ± 0.05
+(M4) Individual Similarity LogReg,Platt,1.000 ± 0.00,1.000 ± 0.00,1.000 ± 0.00,0.668 ± 0.03,0.653 ± 0.03,0.652 ± 0.03
+(M4) Individual Similarity LogReg,Isotonic,1.000 ± 0.00,1.000 ± 0.00,1.000 ± 0.00,0.008 ± 0.00,0.006 ± 0.00,0.006 ± 0.00
+(M4) Individual Similarity LogReg,Temperature,1.000 ± 0.00,1.000 ± 0.00,1.000 ± 0.00,0.577 ± 0.01,0.372 ± 0.01,0.431 ± 0.04
+(M5) Embeddings LogReg,None,1.000 ± 0.00,1.000 ± 0.00,1.000 ± 0.00,0.667 ± 0.02,0.618 ± 0.03,0.636 ± 0.03
+(M5) Embeddings LogReg,Platt,1.000 ± 0.00,1.000 ± 0.00,1.000 ± 0.00,0.667 ± 0.03,0.655 ± 0.03,0.661 ± 0.03
+(M5) Embeddings LogReg,Isotonic,1.000 ± 0.00,1.000 ± 0.00,1.000 ± 0.00,0.011 ± 0.01,0.010 ± 0.01,0.008 ± 0.01
+(M5) Embeddings LogReg,Temperature,1.000 ± 0.00,1.000 ± 0.00,1.000 ± 0.00,0.577 ± 0.01,0.372 ± 0.01,0.455 ± 0.03
