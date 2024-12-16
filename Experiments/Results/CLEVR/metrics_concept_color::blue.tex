@@ -1,23 +1,23 @@
 \begin{tabular}{llllllll}
 \toprule
- &  & accuracy & f1 & auc & K1 & K2 & Kmax \\
+ &  & Acc & F1 & AUC & K1 & K2 & Kmax \\
 Model & Calibration &  &  &  &  &  &  \\
 \midrule
-(M1) Global Threshold & None & 1.000 & 1.000 & - & - & - & - \\
+GT & None & 1.000 & 1.000 & - & - & - & - \\
 \cline{1-8}
-(M2) Individual Threshold & None & 1.000 & 1.000 & - & - & - & - \\
+CT & None & 1.000 & 1.000 & - & - & - & - \\
 \cline{1-8}
-\multirow[t]{4}{*}{(M3) Global Similarity LogReg} & None & 1.000 & 1.000 & 1.000 & 0.649 & 0.626 & 0.624 \\
+\multirow[t]{4}{*}{GLR} & None & 1.000 & 1.000 & 1.000 & 0.649 & 0.626 & 0.624 \\
  & Platt & 1.000 & 1.000 & 1.000 & 0.647 & 0.640 & 0.641 \\
  & Isotonic & 0.995 & 0.992 & 1.000 & 0.002 & 0.001 & 0.002 \\
  & Temperature & 1.000 & 1.000 & 1.000 & 0.569 & 0.368 & 0.444 \\
 \cline{1-8}
-\multirow[t]{4}{*}{(M4) Individual Similarity LogReg} & None & 1.000 & 1.000 & 1.000 & 0.644 & 0.589 & 0.550 \\
+\multirow[t]{4}{*}{CLR} & None & 1.000 & 1.000 & 1.000 & 0.644 & 0.589 & 0.550 \\
  & Platt & 1.000 & 1.000 & 1.000 & 0.641 & 0.625 & 0.615 \\
  & Isotonic & 1.000 & 1.000 & 1.000 & 0.006 & 0.004 & 0.005 \\
  & Temperature & 1.000 & 1.000 & 1.000 & 0.567 & 0.360 & 0.382 \\
 \cline{1-8}
-\multirow[t]{4}{*}{(M5) Embeddings LogReg} & None & 1.000 & 1.000 & 1.000 & 0.648 & 0.588 & 0.604 \\
+\multirow[t]{4}{*}{EmbCLR} & None & 1.000 & 1.000 & 1.000 & 0.648 & 0.588 & 0.604 \\
  & Platt & 1.000 & 1.000 & 1.000 & 0.644 & 0.633 & 0.638 \\
  & Isotonic & 1.000 & 1.000 & 1.000 & 0.010 & 0.009 & 0.005 \\
  & Temperature & 1.000 & 1.000 & 1.000 & 0.568 & 0.361 & 0.429 \\

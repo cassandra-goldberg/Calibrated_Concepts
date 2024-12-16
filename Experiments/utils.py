@@ -4,6 +4,8 @@ from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 import matplotlib.pyplot as plt
 from sklearn.calibration import CalibrationDisplay
 
+models_order = ['GT','CT','GLR','CLR','EmbCLR']
+
 def add_split_column(df):
     # Generate a random assignment for each row
     np.random.seed(42)
@@ -40,7 +42,7 @@ def calibration_error(y, y_prob, measure='K1', bins=10):
 
 def get_test_classification_metric(models, metadata_df, cosine_similarity_df,
                                    embeddings, input_type='similarity',
-                                   metric='accuracy'):
+                                   metric='Acc'):
     concepts = list(cosine_similarity_df.columns)
     values = {}
     model = models
@@ -53,13 +55,13 @@ def get_test_classification_metric(models, metadata_df, cosine_similarity_df,
         if type(models) == dict:
             model = models[concept]
 
-        if metric == 'accuracy':
+        if metric == 'Acc':
             y_pred = model.predict(X)
             values[concept] = accuracy_score(y, y_pred)
-        elif metric == 'f1':
+        elif metric == 'F1':
             y_pred = model.predict(X)
             values[concept] = f1_score(y, y_pred)
-        elif metric == 'auc':
+        elif metric == 'AUC':
             y_score = model.predict_proba(X)[:,1]
             values[concept] = roc_auc_score(y, y_score)
         elif 'K' in metric:
@@ -68,14 +70,14 @@ def get_test_classification_metric(models, metadata_df, cosine_similarity_df,
     return values
 
 def get_all_models_classification_metric(base_models, metadata_df, cosine_similarity_df,
-                                         embeddings, metric='accuracy', input_type='similarity'):
+                                         embeddings, metric='Acc', input_type='similarity'):
     model_names = base_models.keys()
     values_list = []
     for model_name in model_names:
-        if 'M5' in model_name:
+        if 'Emb' in model_name:
             values = get_test_classification_metric(base_models[model_name], metadata_df, cosine_similarity_df,
                            embeddings, input_type='embeddings', metric=metric)
-        elif 'Threshold' in model_name and (metric=='auc' or 'K' in metric):
+        elif ('GT' in model_name or 'CT' in model_name) and (metric=='AUC' or 'K' in metric):
             concepts = list(cosine_similarity_df.columns)
             values = dict.fromkeys(concepts, '-')
         else:
@@ -89,7 +91,7 @@ def get_all_models_classification_metric(base_models, metadata_df, cosine_simila
 
 def compare_all_models_calibration_metric(base_models, m3_models_cal, m4_models_cal, m5_models_cal,
                                    test_metadata_df, test_cosine_similarity_df, test_embeddings, 
-                                   metric='accuracy'):
+                                   metric='Acc'):
     base_models_df = get_all_models_classification_metric(base_models, test_metadata_df, test_cosine_similarity_df,
                                                              test_embeddings, metric=metric)
     base_models_df = base_models_df.reset_index()
@@ -99,30 +101,30 @@ def compare_all_models_calibration_metric(base_models, m3_models_cal, m4_models_
                                                              test_embeddings, metric=metric)
     cal_m3_models_df = cal_m3_models_df.reset_index()
     cal_m3_models_df['Calibration'] = cal_m3_models_df['Model']
-    cal_m3_models_df['Model'] = '(M3) Global Similarity LogReg'
+    cal_m3_models_df['Model'] = 'GLR'
     
     cal_m4_models_df = get_all_models_classification_metric(m4_models_cal, test_metadata_df, test_cosine_similarity_df,
                                                              test_embeddings, metric=metric)
     cal_m4_models_df = cal_m4_models_df.reset_index()
     cal_m4_models_df['Calibration'] = cal_m4_models_df['Model']
-    cal_m4_models_df['Model'] = '(M4) Individual Similarity LogReg'
+    cal_m4_models_df['Model'] = 'CLR'
     
     cal_m5_models_df = get_all_models_classification_metric(m5_models_cal, test_metadata_df, test_cosine_similarity_df,
                                                              test_embeddings, metric=metric, input_type='embeddings')
     cal_m5_models_df = cal_m5_models_df.reset_index()
     cal_m5_models_df['Calibration'] = cal_m5_models_df['Model']
-    cal_m5_models_df['Model'] = '(M5) Embeddings LogReg'
+    cal_m5_models_df['Model'] = 'EmbCLR'
 
     df = pd.concat([base_models_df, cal_m3_models_df, cal_m4_models_df, cal_m5_models_df])
     df = df.sort_values(by=['Model'])
     df = df.set_index(['Model','Calibration'])
-    df = df.round(3)
+    df = df.loc[models_order]
     return df
 
 def compare_all_models_calibration_avg(base_models, m3_models_cal, m4_models_cal, m5_models_cal,
                                    test_metadata_df, test_cosine_similarity_df, test_embeddings):
     metrics_df = pd.DataFrame()
-    for metric in ['accuracy', 'f1', 'auc', 'K1', 'K2', 'Kmax']:
+    for metric in ['Acc', 'F1', 'AUC', 'K1', 'K2', 'Kmax']:
         df = compare_all_models_calibration_metric(base_models, m3_models_cal, m4_models_cal, m5_models_cal,
                                    test_metadata_df, test_cosine_similarity_df, test_embeddings, 
                                    metric=metric)
@@ -130,16 +132,17 @@ def compare_all_models_calibration_avg(base_models, m3_models_cal, m4_models_cal
             df = df.replace('-', np.nan).infer_objects(copy=False)
         series_mean = df.transpose().mean(skipna=True)
         series_std = df.transpose().std(skipna=True)
-        series_str = series_mean.apply(lambda x: '{0:.3f}'.format(x))+u" \u00B1 "+series_std.apply(lambda x: '{0:.2f}'.format(x))
+        series_str = series_mean.apply(lambda x: '{0:.2f}'.format(x))+u" \u00B1 "+series_std.apply(lambda x: '{0:.2f}'.format(x))
         metrics_df[metric] = series_str
     metrics_df = metrics_df.replace(u"nan \u00B1 nan", '-')
+    metrics_df = metrics_df.loc[models_order]
     return metrics_df
 
 def compare_all_models_calibration_concept(base_models, m3_models_cal, m4_models_cal, m5_models_cal,
                                            test_metadata_df, test_cosine_similarity_df, test_embeddings,
                                           concept):
     metrics_df = pd.DataFrame()
-    for metric in ['accuracy', 'f1', 'auc', 'K1', 'K2', 'Kmax']:
+    for metric in ['Acc', 'F1', 'AUC', 'K1', 'K2', 'Kmax']:
         df = compare_all_models_calibration_metric(base_models, m3_models_cal, m4_models_cal, m5_models_cal,
                                    test_metadata_df, test_cosine_similarity_df, test_embeddings, 
                                    metric=metric)
@@ -148,4 +151,5 @@ def compare_all_models_calibration_concept(base_models, m3_models_cal, m4_models
         series = df[concept]
         metrics_df[metric] = series.apply(lambda x: '{0:.3f}'.format(x))
     metrics_df = metrics_df.replace('nan', '-')
+    metrics_df = metrics_df.loc[models_order]
     return metrics_df

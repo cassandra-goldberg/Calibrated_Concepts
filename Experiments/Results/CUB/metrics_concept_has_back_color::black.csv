@@ -1,15 +1,15 @@
-Model,Calibration,accuracy,f1,auc,K1,K2,Kmax
-(M1) Global Threshold,None,0.719,0.000,-,-,-,-
-(M2) Individual Threshold,None,0.784,0.547,-,-,-,-
-(M3) Global Similarity LogReg,None,0.719,0.000,0.752,0.631,0.462,0.529
-(M3) Global Similarity LogReg,Platt,0.719,0.000,0.752,0.632,0.463,0.531
-(M3) Global Similarity LogReg,Isotonic,0.719,0.000,0.751,0.630,0.463,0.528
-(M3) Global Similarity LogReg,Temperature,0.719,0.000,0.752,0.423,0.203,0.304
-(M4) Individual Similarity LogReg,None,0.781,0.509,0.752,0.491,0.316,0.185
-(M4) Individual Similarity LogReg,Platt,0.783,0.535,0.752,0.489,0.313,0.179
-(M4) Individual Similarity LogReg,Isotonic,0.783,0.544,0.753,0.494,0.320,0.291
-(M4) Individual Similarity LogReg,Temperature,0.781,0.509,0.752,0.382,0.175,0.273
-(M5) Embeddings LogReg,None,0.785,0.473,0.798,0.497,0.311,0.241
-(M5) Embeddings LogReg,Platt,0.794,0.577,0.798,0.506,0.350,0.216
-(M5) Embeddings LogReg,Isotonic,0.796,0.577,0.797,0.513,0.357,0.214
-(M5) Embeddings LogReg,Temperature,0.785,0.473,0.798,0.387,0.177,0.325
+Model,Calibration,Acc,F1,AUC,K1,K2,Kmax
+GT,None,0.719,0.000,-,-,-,-
+CT,None,0.784,0.547,-,-,-,-
+GLR,None,0.719,0.000,0.752,0.631,0.462,0.529
+GLR,Platt,0.719,0.000,0.752,0.632,0.463,0.531
+GLR,Isotonic,0.719,0.000,0.751,0.630,0.463,0.528
+GLR,Temperature,0.719,0.000,0.752,0.423,0.203,0.304
+CLR,None,0.781,0.509,0.752,0.491,0.316,0.185
+CLR,Platt,0.783,0.535,0.752,0.489,0.313,0.179
+CLR,Isotonic,0.783,0.544,0.753,0.494,0.320,0.291
+CLR,Temperature,0.781,0.509,0.752,0.382,0.175,0.273
+EmbCLR,None,0.785,0.473,0.798,0.497,0.311,0.241
+EmbCLR,Platt,0.794,0.577,0.798,0.506,0.350,0.216
+EmbCLR,Isotonic,0.796,0.577,0.797,0.513,0.357,0.214
+EmbCLR,Temperature,0.785,0.473,0.798,0.387,0.177,0.325
