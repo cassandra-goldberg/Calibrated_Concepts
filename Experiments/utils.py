@@ -4,6 +4,8 @@ from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 import matplotlib.pyplot as plt
 from sklearn.calibration import CalibrationDisplay
 
+calibration_ordering = ["None", "Histogram", "Isotonic", "Platt", "Temperature", "Beta"]
+
 def add_split_column(df):
     # Generate a random assignment for each row
     np.random.seed(42)
@@ -114,7 +116,8 @@ def compare_all_models_calibration_metric(base_models, m3_models_cal, m4_models_
     cal_m5_models_df['Model'] = '(M5) Embeddings LogReg'
 
     df = pd.concat([base_models_df, cal_m3_models_df, cal_m4_models_df, cal_m5_models_df])
-    df = df.sort_values(by=['Model'])
+    df['Calibration'] = pd.Categorical(df['Calibration'], calibration_ordering)
+    df = df.sort_values(by=['Model', 'Calibration'])
     df = df.set_index(['Model','Calibration'])
     df = df.round(3)
     return df
