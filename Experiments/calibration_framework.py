@@ -31,18 +31,20 @@ class TemperatureScaling(nn.Module):
         original_logits = self.base_model.predict_proba(X) 
         scaled_logits = original_logits / self.temperature
         return scaled_logits
+    
+    def softmax(self, Z):
+        """Transform scaled logits to output probability predictions."""
+        exps = np.exp(Z - np.max(Z, axis=1, keepdims=True)) 
+        return exps / np.sum(exps, axis=1, keepdims=True) 
         
     def predict_proba(self, X):
         """Return the probability predictions from the scaled logits."""
         scaled_logits = self.predict_scaled_logits(X)
-        exps = np.exp(scaled_logits - np.max(scaled_logits, axis=1, keepdims=True)) 
-        return exps / np.sum(exps, axis=1, keepdims=True) 
+        return self.softmax(scaled_logits)
     
     def predict(self, X):
         probabilities = self.predict_proba(X)
         return np.argmax(probabilities, axis=1)
-        
-    
 
 def apply_temperature_scaling(base_model, X_cal, y_cal, verbose=True):
     """Train temperature scaling using negative log-likelihood. """
@@ -71,14 +73,18 @@ def apply_temperature_scaling(base_model, X_cal, y_cal, verbose=True):
 # Model wrapper for calibration methods taken from the netcal package
 class CalibratedBinaryModel(nn.Module):
     """A simple module for histogram binning or beta calibration."""
-    def __init__(self, base_model, calibrator):
+    def __init__(self, base_model, calibrator, logit = True, info = None):
         super(CalibratedBinaryModel, self).__init__()
         self.base_model = base_model
         self.calibrator = calibrator # from netcal
+        self.logit = logit
+        self.info = info
         
     def predict_proba(self, X):
         """Return calibrated probability predictions (must be binary)."""
         z = self.base_model.predict_proba(X)
+        if self.logit:
+            z[:, 1] = torch.logit(z[:, 1])
         z[:, 1] = self.calibrator.transform(z[:, 1])
         z[:, 0] = 1 - z[:, 1]
         return z
@@ -93,16 +99,48 @@ def apply_histogram_binning(base_model, X_cal, y_cal, nbins = 10):
     hist = HB(nbins, detection = False) #, equal_intervals = False is not implemented :(
     
     y_pred = base_model.predict_proba(X_cal)[:, 1] # estimated probability that the (concept) label is 1
+    # I don't expect logit transforming to improve the performance of histogram binning
     hist.fit(y_pred, y_cal)
     
-    return CalibratedBinaryModel(base_model, hist)
+    return CalibratedBinaryModel(base_model, hist, logit = False)
 
 ### Beta Calibration ###
+# this method explicitly maps probability estimates to calibrated probability estimates so no need to logit
 def apply_beta_calibration(base_model, X_cal, y_cal):
     from netcal.scaling import BetaCalibration as BC
     beta = BC("mle")
 
-    y_pred = base_model.predict_proba(X_cal)[:, 1]
+    y_pred = base_model.predict_proba(X_cal)[:, 1] # probability scale
     beta.fit(y_pred, y_cal)
     
-    return CalibratedBinaryModel(base_model, beta)
+    return CalibratedBinaryModel(base_model, beta, logit = False)
+
+### Platt Scaling ###
+# best practice is to set logit = True when base_model outputs probability estimates in (0, 1)
+def apply_platt_scaling_v2(base_model, X_cal, y_cal, logit = True):
+    from netcal.scaling import LogisticCalibration as LC
+    platt = LC(temperature_only = False, method = "mle", detection = False)
+    
+    y_pred = base_model.predict_proba(X_cal)[:, 1] # probability scale
+    if logit:
+        z_pred = torch.logit(y_pred)               # real line
+        platt.fit(z_pred, y_cal)
+    else:
+        platt.fit(y_pred, y_cal)
+    
+    return CalibratedBinaryModel(base_model, platt, logit = logit)
+
+### Temperature Scaling ###
+# best practice is to set logit = True when base_model outputs probability estimates in (0, 1)
+def apply_temperature_scaling_v2(base_model, X_cal, y_cal, logit = True):
+    from netcal.scaling import LogisticCalibration as LC
+    temp = LC(temperature_only = True, method = "mle", detection = False)
+    
+    y_pred = base_model.predict_proba(X_cal)[:, 1] # probability scale
+    if logit:
+        z_pred = torch.logit(y_pred)               # real line
+        temp.fit(z_pred, y_cal)
+    else:
+        temp.fit(y_pred, y_cal)
+    
+    return CalibratedBinaryModel(base_model, temp, logit = logit)
