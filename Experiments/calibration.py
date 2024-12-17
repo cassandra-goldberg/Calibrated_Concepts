@@ -1,6 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.calibration import CalibrationDisplay
+import seaborn as sns
+from models import get_concept_sim_X_y, get_concept_sim_X_y
+
+#plt.rcParams['svg.fonttype'] = 'none'
 
 def calibration_error(y, y_prob, measure='K1', bins=10):
     bin_boundaries = np.linspace(0, 1, bins + 1)
@@ -67,6 +71,124 @@ def plot_calibration_curves_emb(models, calibration_metadata_df, calibration_cos
     
     return eces
 
+def plot_calibration_curves_concept(test_metadata_df, test_cosine_similarity_df, 
+                                    test_embeddings, base_models, calibrated_models,
+                                    concept, save_path):
+    fig, ax = plt.subplots(1,3, figsize=(9,3.5), sharex=True, sharey=True, constrained_layout=True)
+    tl = fig.suptitle(f'Calibration curves for concept {concept}')
+    
+    for i, model in enumerate(['GLR', 'CLR', 'EmbCLR']):
+        if 'Emb' in model:
+            X_test = test_embeddings
+        else:
+            X_test, y_test = get_concept_sim_X_y(test_metadata_df, test_cosine_similarity_df,
+                                        concept)
+        y_prob = {}
+    
+        if 'G' in model:    
+            y_prob['Base'] = base_models[model].predict_proba(X_test)[:,1]
+            for cal in calibrated_models[model].keys():
+                y_prob[cal] = calibrated_models[model][cal].predict_proba(X_test)[:,1]
+        else:
+            y_prob['Base'] = base_models[model][concept].predict_proba(X_test)[:,1]
+            for cal in calibrated_models[model].keys():
+                y_prob[cal] = calibrated_models[model][cal][concept].predict_proba(X_test)[:,1]
+        
+        for m in y_prob.keys():
+            display = CalibrationDisplay.from_predictions(
+                    y_test,
+                    y_prob[m],
+                    n_bins=10,
+                    name=m,
+                    ax=ax[i],
+                )
+        handles, labels = ax[i].get_legend_handles_labels()
+        ax[i].get_legend().remove()
+        ax[i].set_title(model)
+        ax[i].set_xlabel('')
+        ax[i].set_ylabel('')
+        if i == 0:
+            ax[i].set_ylabel('Fraction of positives')
+        if i == 1:
+            ax[i].set_xlabel('Mean predicted probability')
+    lgd = fig.legend(handles, labels, ncols=5, loc = "upper center", bbox_to_anchor = (0.5, 0))
+    fig.savefig(save_path+f'calibration_curve_{concept}.png', bbox_extra_artists=(lgd,tl),
+                bbox_inches='tight')
 
+    return fig
 
+def plot_calibration_curves_avg(test_metadata_df, test_cosine_similarity_df, 
+                                test_embeddings, base_models, calibrated_models,
+                                save_path, dataset_name):
+    concepts = list(test_cosine_similarity_df.keys())
+    
+    fig, ax = plt.subplots(2,3, figsize=(9,5), sharex=True, constrained_layout=True,
+                          gridspec_kw = {'height_ratios':[2,1]})
+    tl = fig.suptitle(f'Calibration curves for all concepts - {dataset_name}')
+    
+    for i, model in enumerate(['GLR', 'CLR', 'EmbCLR']):
+        y_test_list = []
+        y_prob_list = {cal: [] for cal in ['Base']+list(calibrated_models[model].keys())}
 
+        for concept in concepts:
+            if 'Emb' in model:
+                X_test = test_embeddings
+                _, y_test = get_concept_sim_X_y(test_metadata_df, test_cosine_similarity_df,
+                                            concept)
+            else:
+                X_test, y_test = get_concept_sim_X_y(test_metadata_df, test_cosine_similarity_df,
+                                            concept)
+            
+            if 'G' in model:    
+                y_prob_list['Base'].append(base_models[model].predict_proba(X_test)[:,1])
+                for cal in calibrated_models[model].keys():
+                    y_prob_list[cal].append(calibrated_models[model][cal].predict_proba(X_test)[:,1])
+            else:
+                y_prob_list['Base'].append(base_models[model][concept].predict_proba(X_test)[:,1])
+                for cal in calibrated_models[model].keys():
+                    y_prob_list[cal].append(calibrated_models[model][cal][concept].predict_proba(X_test)[:,1])
+
+            y_test_list.append(y_test)
+            
+        y_test = np.concatenate(y_test_list)
+        y_prob = {}
+        for cal in y_prob_list.keys():
+            y_prob[cal] = np.concatenate(y_prob_list[cal])
+
+        for j,m in enumerate(y_prob.keys()):
+            display = CalibrationDisplay.from_predictions(
+                    y_test,
+                    y_prob[m],
+                    n_bins=10,
+                    name=m,
+                    ax=ax[0,i],
+                )
+            sns.kdeplot(y_prob[m], 
+                        label=m, 
+                        ax=ax[1,i]
+                       )
+        
+        handles, labels = ax[0,i].get_legend_handles_labels()
+        ax[0,i].get_legend().remove()
+        ax[0,i].set_title(model)
+        ax[0,i].set_xlabel('')
+        ax[1,i].set_xlabel('')
+        ax[0,i].set_ylabel('')
+        ax[1,i].set_ylabel('')
+        ax[1,i].set_yticks([])
+        if i == 0:
+            ax[0,i].set_ylabel('Fraction of positives')
+            ax[1,i].set_ylabel('Density')
+        if i == 1:
+            ax[1,i].set_xlabel('Mean predicted probability')
+        if i != 0:
+            ax[0,i].set_yticklabels([])
+
+    ax[0,0].set_xlim(-0.05,1.05)
+    lgd = fig.legend(handles, labels, ncols=5, loc = "upper center", bbox_to_anchor = (0.5, 0))
+    fig.savefig(save_path+f'avg_calibration_curve.png', bbox_extra_artists=(lgd,tl),
+                bbox_inches='tight', dpi=400)
+    fig.savefig(save_path+f'avg_calibration_curve.svg', bbox_extra_artists=(lgd,tl),
+                bbox_inches='tight', format="svg")
+
+    return fig
