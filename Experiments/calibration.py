@@ -4,6 +4,9 @@ from sklearn.calibration import CalibrationDisplay
 import seaborn as sns
 from models import get_concept_sim_X_y, get_concept_sim_X_y
 
+colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+color_map = {'Base' : 'grey', 'Histogram' : colors[0], 'Isotonic' : colors[1], 'Platt' : colors[2], 'Temperature' : colors[3], 'Beta' : colors[4]}
+
 #plt.rcParams['svg.fonttype'] = 'none'
 
 def calibration_error(y, y_prob, measure='K1', bins=10):
@@ -101,6 +104,7 @@ def plot_calibration_curves_concept(test_metadata_df, test_cosine_similarity_df,
                     n_bins=10,
                     name=m,
                     ax=ax[i],
+                    color=color_map[m],
                 )
         handles, labels = ax[i].get_legend_handles_labels()
         ax[i].get_legend().remove()
@@ -162,10 +166,12 @@ def plot_calibration_curves_avg(test_metadata_df, test_cosine_similarity_df,
                     n_bins=10,
                     name=m,
                     ax=ax[0,i],
+                    color=color_map[m],
                 )
             sns.kdeplot(y_prob[m], 
                         label=m, 
-                        ax=ax[1,i]
+                        ax=ax[1,i],
+                        color=color_map[m],
                        )
         
         handles, labels = ax[0,i].get_legend_handles_labels()
@@ -203,7 +209,6 @@ def plot_calibrators(models, name, concept = None, path = None):
     from scipy.special import logit, expit
     fig, ax = plt.subplots()
     n = 501 # discretization
-    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
     # None
     plt.plot([0, 1], [0, 1], label = 'None', color = 'grey', linestyle = 'dashed', alpha = 0.5)
@@ -215,18 +220,18 @@ def plot_calibrators(models, name, concept = None, path = None):
             x_vals = model.calibrator.get_params()['_bin_bounds'][0]
             y_vals = model.calibrator.get_params()['_bin_map']
             y_vals = np.append(y_vals, y_vals[-1])
-            plt.step(x_vals, y_vals, where = 'post', label = 'Histogram', color = colors[0])
+            plt.step(x_vals, y_vals, where = 'post', label = 'Histogram', color = color_map['Histogram'])
         elif method == 'Isotonic': # sklearn implementation
             x_vals = np.linspace(0, 1, num=n, endpoint=True)[1:-1]
             y_vals = model.calibrated_classifiers_[0].calibrators[0].predict(logit(x_vals))
-            plt.plot(x_vals, y_vals, label = 'Isotonic', color = colors[1])
+            plt.plot(x_vals, y_vals, label = 'Isotonic', color = color_map['Isotonic'])
         elif method == 'Platt': # sklearn implementation
             calibrator = model.calibrated_classifiers_[0].calibrators[0]
             a, b = -calibrator.a_, -calibrator.b_
             
             x_vals = np.linspace(0, 1, num=n, endpoint=True)[1:-1]
             y_vals = calibrator.predict(logit(x_vals))
-            plt.plot(x_vals, y_vals, label = 'Platt (A={:.2f}, B={:.2f})'.format(a, b), color = colors[2])
+            plt.plot(x_vals, y_vals, label = 'Platt (A={:.2f}, B={:.2f})'.format(a, b), color = color_map['Platt'])
         elif method == 'Platt v2': # netcal implementation
             a = model.calibrator.weights[0]
             b = model.calibrator.intercept[0]
@@ -249,7 +254,7 @@ def plot_calibrators(models, name, concept = None, path = None):
             
             x_vals = np.linspace(0, 1, num=n, endpoint=True)
             y_vals = model.calibrator.transform(x_vals)
-            plt.plot(x_vals, y_vals, label = 'Temperature (T={:.2f})'.format(T), color = colors[3])
+            plt.plot(x_vals, y_vals, label = 'Temperature (T={:.2f})'.format(T), color = color_map['Temperature'])
         elif method == 'Beta': # netcal implementation
             tmp = model.calibrator.get_params()['_sites']
             a, b = tmp['weights']['values']
@@ -257,7 +262,7 @@ def plot_calibrators(models, name, concept = None, path = None):
 
             x_vals = np.linspace(0, 1, num=n, endpoint=True)
             y_vals = model.calibrator.transform(x_vals)
-            plt.plot(x_vals, y_vals, label = 'Beta (a={:.2f}, b={:.2f}, c={:.2f})'.format(a, b, c), color = colors[4])
+            plt.plot(x_vals, y_vals, label = 'Beta (a={:.2f}, b={:.2f}, c={:.2f})'.format(a, b, c), color = color_map['Beta'])
         else:
             print("{} plot not yet implemented".format(method))
             continue
