@@ -234,7 +234,7 @@ def plot_calibrators(models, name, concept = None, path = None):
             x_vals = np.linspace(0, 1, num=n, endpoint=True)
             y_vals = model.calibrator.transform(x_vals)
             plt.plot(x_vals, y_vals, label = 'Platt netcal (a={:.2f}, b={:.2f})'.format(a, b), color = colors[6])
-        elif method == 'Temperature' : # manual implementation, FIXME weird
+        elif method == 'Temperature old' : # manual implementation
             T = model.temperature
 
             x_vals_vec = np.array([1 - x_vals, x_vals]).T
@@ -244,12 +244,12 @@ def plot_calibrators(models, name, concept = None, path = None):
             x_vals = np.linspace(0, 1, num=n, endpoint=True)[1:-1]
             y_vals = expit(logit(x_vals) / model.temperature)
             plt.plot(x_vals, y_vals, label = 'Temperature (T={:.2f})'.format(model.temperature), color = colors[3])
-        elif method == 'Temperature v2': # netcal implementation
+        elif method == 'Temperature': # netcal implementation
             T = 1 / model.calibrator.temperature[0]
             
             x_vals = np.linspace(0, 1, num=n, endpoint=True)
             y_vals = model.calibrator.transform(x_vals)
-            plt.plot(x_vals, y_vals, label = 'Temperature netcal (T={:.2f})'.format(T), color = colors[5])
+            plt.plot(x_vals, y_vals, label = 'Temperature (T={:.2f})'.format(T), color = colors[3])
         elif method == 'Beta': # netcal implementation
             tmp = model.calibrator.get_params()['_sites']
             a, b = tmp['weights']['values']
