@@ -3,6 +3,8 @@ import numpy as np
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 import matplotlib.pyplot as plt
 from sklearn.calibration import CalibrationDisplay
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 models_order = ['GT','CT','GLR','CLR','EmbCLR']
 calibration_ordering = ["None", "Histogram", "Isotonic", "Platt", "Platt v2", "Temperature", "Temperature v2", "Beta"]
@@ -132,7 +134,7 @@ def compare_all_models_calibration_avg(base_models, m3_models_cal, m4_models_cal
             df = df.replace('-', np.nan).infer_objects(copy=False)
         series_mean = df.transpose().mean(skipna=True)
         series_std = df.transpose().std(skipna=True)
-        series_str = series_mean.apply(lambda x: '{0:.2f}'.format(x))+u" \u00B1 "+series_std.apply(lambda x: '{0:.2f}'.format(x))
+        series_str = series_mean.apply(lambda x: '{0:.3f}'.format(x))+u" \u00B1 "+series_std.apply(lambda x: '{0:.3f}'.format(x))
         metrics_df[metric] = series_str
     metrics_df = metrics_df.replace(u"nan \u00B1 nan", '-')
     metrics_df = metrics_df.loc[models_order]
@@ -153,3 +155,57 @@ def compare_all_models_calibration_concept(base_models, m3_models_cal, m4_models
     metrics_df = metrics_df.replace('nan', '-')
     metrics_df = metrics_df.loc[models_order]
     return metrics_df
+
+def plot_metrics_by_concept(models_dict, test_metadata_df, test_cosine_similarity_df, 
+                            test_embeddings, save_path, dataset_name, concepts=None):
+    if concepts is None:
+        concepts = list(test_cosine_similarity_df.columns)
+    select_models = list(models_dict.keys())
+    palette = {select_models[0]: '#3182bd', 
+               select_models[1]: '#9ecae1',
+               select_models[2]: '#e6550d',
+               select_models[3]: '#fdae6b'
+              }
+    
+    metric_map = {'Acc': 'Accuracy', 'K1': 'Mean calibration error', 
+                  'Kmax': 'Maximum calibration error'}
+    
+    fig, axs = plt.subplots(1,3, figsize=(9,4), sharey=True)
+    
+    for i, metric in enumerate(['Acc','K1','Kmax']):
+        metrics_d = {'Model': [],
+                     'Concept': [],
+                      metric_map[metric]: []
+                    }
+        for m_name, m in models_dict.items():
+            if 'Emb' in m_name:
+                metrics_dict = get_test_classification_metric(m, test_metadata_df, 
+                                                              test_cosine_similarity_df, 
+                                                              test_embeddings, 
+                                                               metric=metric,
+                                                             input_type='embeddings')
+            else:
+                metrics_dict = get_test_classification_metric(m, test_metadata_df, 
+                                                              test_cosine_similarity_df, 
+                                                              test_embeddings, 
+                                                               metric=metric)
+            for concept in concepts:
+                metrics_d['Model'].append(m_name)
+                metrics_d['Concept'].append(concept)
+                metrics_d[metric_map[metric]].append(metrics_dict[concept])
+                
+        metric_df_aux = pd.DataFrame(metrics_d)
+        
+        sns.barplot(metric_df_aux, 
+                    y="Concept", x=metric_map[metric], hue="Model", 
+                    legend=True, palette=palette, 
+                   ax=axs[i])
+        handles, labels = axs[i].get_legend_handles_labels()
+        axs[i].get_legend().remove()
+    lgd = fig.legend(handles, labels, ncols=4, loc = "upper center", bbox_to_anchor = (0.5, 0),
+                    title='Model')
+    tl = fig.suptitle(f'Breakdown of metrics by concept - {dataset_name}')
+    fig.tight_layout()
+    fig.savefig(save_path+f'metrics_concept.png', bbox_extra_artists=(tl,lgd),
+                    bbox_inches='tight', dpi=150)
+    return fig
