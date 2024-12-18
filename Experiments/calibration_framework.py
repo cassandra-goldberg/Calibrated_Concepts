@@ -6,6 +6,7 @@ import torch.nn as nn
 import pandas as pd
 import numpy as np
 from scipy.optimize import minimize
+from scipy.special import logit, expit
 
 ### Platt Scaling ###
 def apply_platt_scaling(base_model, X_cal, y_cal):
@@ -73,18 +74,18 @@ def apply_temperature_scaling(base_model, X_cal, y_cal, verbose=True):
 # Model wrapper for calibration methods taken from the netcal package
 class CalibratedBinaryModel(nn.Module):
     """A simple module for histogram binning or beta calibration."""
-    def __init__(self, base_model, calibrator, logit = True, info = None):
+    def __init__(self, base_model, calibrator, logits = True, info = None):
         super(CalibratedBinaryModel, self).__init__()
         self.base_model = base_model
         self.calibrator = calibrator # from netcal
-        self.logit = logit
+        self.logits = logits
         self.info = info
         
     def predict_proba(self, X):
         """Return calibrated probability predictions (must be binary)."""
         z = self.base_model.predict_proba(X)
-        if self.logit:
-            z[:, 1] = torch.logit(z[:, 1])
+        if self.logits:
+            z[:, 1] = torch.logits(z[:, 1])
         z[:, 1] = self.calibrator.transform(z[:, 1])
         z[:, 0] = 1 - z[:, 1]
         return z
@@ -101,8 +102,11 @@ def apply_histogram_binning(base_model, X_cal, y_cal, nbins = 10):
     y_pred = base_model.predict_proba(X_cal)[:, 1] # estimated probability that the (concept) label is 1
     # I don't expect logit transforming to improve the performance of histogram binning
     hist.fit(y_pred, y_cal)
+
+    info = {'bin_bounds' : hist.get_params()['_bin_bounds'][0],
+            'bin_vals'   : hist.get_params()['_bin_map']}
     
-    return CalibratedBinaryModel(base_model, hist, logit = False)
+    return CalibratedBinaryModel(base_model, hist, logits = False, info = info)
 
 ### Beta Calibration ###
 # this method explicitly maps probability estimates to calibrated probability estimates so no need to logit
@@ -112,35 +116,34 @@ def apply_beta_calibration(base_model, X_cal, y_cal):
 
     y_pred = base_model.predict_proba(X_cal)[:, 1] # probability scale
     beta.fit(y_pred, y_cal)
+
+    tmp = beta.get_params()['_sites']
+    a, b = tmp['weights']['values']
+    c = tmp['bias']['values'][0]
+    info = {'a' : a, 'b' : b, 'c' : c}
     
-    return CalibratedBinaryModel(base_model, beta, logit = False)
+    return CalibratedBinaryModel(base_model, beta, logits = False, info = info)
 
 ### Platt Scaling ###
-# best practice is to set logit = True when base_model outputs probability estimates in (0, 1)
-def apply_platt_scaling_v2(base_model, X_cal, y_cal, logit = True):
+def apply_platt_scaling_v2(base_model, X_cal, y_cal):
     from netcal.scaling import LogisticCalibration as LC
     platt = LC(temperature_only = False, method = "mle", detection = False)
     
     y_pred = base_model.predict_proba(X_cal)[:, 1] # probability scale
-    if logit:
-        z_pred = torch.logit(y_pred)               # real line
-        platt.fit(z_pred, y_cal)
-    else:
-        platt.fit(y_pred, y_cal)
+    platt.fit(y_pred, y_cal)
+
+    info = {'A' : platt.weights[0], 'B' : platt.intercept[0]}
     
-    return CalibratedBinaryModel(base_model, platt, logit = logit)
+    return CalibratedBinaryModel(base_model, platt, logits = False, info = info)
 
 ### Temperature Scaling ###
-# best practice is to set logit = True when base_model outputs probability estimates in (0, 1)
-def apply_temperature_scaling_v2(base_model, X_cal, y_cal, logit = True):
-    from netcal.scaling import LogisticCalibration as LC
-    temp = LC(temperature_only = True, method = "mle", detection = False)
+def apply_temperature_scaling_v2(base_model, X_cal, y_cal):
+    from netcal.scaling import TemperatureScaling as TS
+    temp = TS(method = "mle", detection = False)
     
     y_pred = base_model.predict_proba(X_cal)[:, 1] # probability scale
-    if logit:
-        z_pred = torch.logit(y_pred)               # real line
-        temp.fit(z_pred, y_cal)
-    else:
-        temp.fit(y_pred, y_cal)
+    temp.fit(y_pred, y_cal)
+
+    info = {'T' : 1 / temp.temperature[0]}
     
-    return CalibratedBinaryModel(base_model, temp, logit = logit)
+    return CalibratedBinaryModel(base_model, temp, logits = False, info = info)

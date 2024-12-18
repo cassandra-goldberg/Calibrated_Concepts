@@ -13,9 +13,9 @@ python3 -m venv .venv
 source .venv/bin/activate
 
 # if you don't need to re-generate the embeddings the following are sufficient
-pip install numpy pandas matplotlib scikit-learn torch netcal
+pip install numpy pandas matplotlib scipy scikit-learn torch netcal seaborn
 
-# else fixme (additionally need seaborn etc)
+# else fixme
 ```
 
 Notebooks can be run using VSCode, Jupyter Notebook, etc. For example:

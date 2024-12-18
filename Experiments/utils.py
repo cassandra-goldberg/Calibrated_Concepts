@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from sklearn.calibration import CalibrationDisplay
 
 models_order = ['GT','CT','GLR','CLR','EmbCLR']
-calibration_ordering = ["None", "Histogram", "Isotonic", "Platt", "Temperature", "Beta"]
+calibration_ordering = ["None", "Histogram", "Isotonic", "Platt", "Platt v2", "Temperature", "Temperature v2", "Beta"]
 
 def add_split_column(df):
     # Generate a random assignment for each row

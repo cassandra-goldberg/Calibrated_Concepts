@@ -199,7 +199,7 @@ name    : (str) Name of the base model, e.g., M3
 concept : For global methods, None. For individual methods, the name of the concept to be plotted
 path    : If you want to save the plot to a file, the path to write to. Else, None
 """
-def plot_calibrator(models, name, concept = None, path = None):
+def plot_calibrators(models, name, concept = None, path = None):
     from scipy.special import logit, expit
     fig, ax = plt.subplots()
     n = 501 # discretization
@@ -208,7 +208,7 @@ def plot_calibrator(models, name, concept = None, path = None):
     # None
     plt.plot([0, 1], [0, 1], label = 'None', color = 'grey', linestyle = 'dashed', alpha = 0.5)
 
-    for method, model in models:
+    for method, model in models.items():
         if not concept is None:
             model = model[concept]
         if method == 'Histogram': # netcal implementation
@@ -222,25 +222,34 @@ def plot_calibrator(models, name, concept = None, path = None):
             plt.plot(x_vals, y_vals, label = 'Isotonic', color = colors[1])
         elif method == 'Platt': # sklearn implementation
             calibrator = model.calibrated_classifiers_[0].calibrators[0]
-            a, b = calibrator.a_, calibrator.b_
+            a, b = -calibrator.a_, -calibrator.b_
             
             x_vals = np.linspace(0, 1, num=n, endpoint=True)[1:-1]
             y_vals = calibrator.predict(logit(x_vals))
             plt.plot(x_vals, y_vals, label = 'Platt (A={:.2f}, B={:.2f})'.format(a, b), color = colors[2])
+        elif method == 'Platt v2': # netcal implementation
+            a = model.calibrator.weights[0]
+            b = model.calibrator.intercept[0]
+
+            x_vals = np.linspace(0, 1, num=n, endpoint=True)
+            y_vals = model.calibrator.transform(x_vals)
+            plt.plot(x_vals, y_vals, label = 'Platt netcal (a={:.2f}, b={:.2f})'.format(a, b), color = colors[6])
         elif method == 'Temperature' : # manual implementation, FIXME weird
             T = model.temperature
+
             x_vals_vec = np.array([1 - x_vals, x_vals]).T
             y_vals = model.softmax(x_vals_vec / T)[:, 1]
             plt.plot(x_vals, y_vals, label = 'Temperature (T={:.2f})'.format(T), color = colors[3])
-        elif method == 'Temperature v2': # bastardized interpretation of manual implementation
+        elif method == 'Temperature v3': # bastardized interpretation of manual implementation
             x_vals = np.linspace(0, 1, num=n, endpoint=True)[1:-1]
             y_vals = expit(logit(x_vals) / model.temperature)
             plt.plot(x_vals, y_vals, label = 'Temperature (T={:.2f})'.format(model.temperature), color = colors[3])
-        elif method == 'Temperature v3': # netcal implementation
-            T = model.calibrator.temperature() # probably need to index
+        elif method == 'Temperature v2': # netcal implementation
+            T = 1 / model.calibrator.temperature[0]
+            
             x_vals = np.linspace(0, 1, num=n, endpoint=True)
             y_vals = model.calibrator.transform(x_vals)
-            plt.plot(x_vals, y_vals, label = 'Temperature (T={:.2f})'.format(T), color = colors[3])
+            plt.plot(x_vals, y_vals, label = 'Temperature netcal (T={:.2f})'.format(T), color = colors[5])
         elif method == 'Beta': # netcal implementation
             tmp = model.calibrator.get_params()['_sites']
             a, b = tmp['weights']['values']
