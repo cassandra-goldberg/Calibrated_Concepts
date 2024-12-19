@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 models_order = ['GT','CT','GLR','CLR','EmbCLR']
-calibration_ordering = ["None", "Histogram", "Isotonic", "Platt", "Platt v2", "Temperature", "Temperature v2", "Beta"]
+calibration_ordering = ["None", "Histogram", "Isotonic", "Platt", "Platt L2", "Temperature", "Temperature L2", "Beta"]
 
 def add_split_column(df):
     # Generate a random assignment for each row

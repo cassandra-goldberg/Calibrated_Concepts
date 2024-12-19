@@ -5,7 +5,15 @@ import seaborn as sns
 from models import get_concept_sim_X_y, get_concept_sim_X_y
 
 colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-color_map = {'Base' : 'grey', 'Histogram' : colors[0], 'Isotonic' : colors[1], 'Platt' : colors[2], 'Temperature' : colors[3], 'Beta' : colors[4]}
+color_map = {'Base' : 'grey', 
+             'Histogram' : colors[0], 
+             'Isotonic' : colors[1], 
+             'Platt L2' : colors[2],          # regularized (sklearn)
+             'Temperature' : colors[3],       # unregularized (netcal)
+             'Beta' : colors[4], 
+             'Platt' : colors[5],             # unregularized (netcal)
+             'Temperature L2' : colors[6]     # regularized (sklearn) NOT IMPLEMENTED
+            }
 
 #plt.rcParams['svg.fonttype'] = 'none'
 
@@ -204,65 +212,76 @@ models  : Dictionary of calibration method names (str) to calibrated models
 name    : (str) Name of the base model, e.g., M3
 concept : For global methods, None. For individual methods, the name of the concept to be plotted
 path    : If you want to save the plot to a file, the path to write to. Else, None
+methods : If you only want to plot a strict subset of the calibrators, list the names. Else, None
 """
-def plot_calibrators(models, name, concept = None, path = None):
+def plot_calibrators(models, name, concept = None, path = None, methods = None):
     from scipy.special import logit, expit
     fig, ax = plt.subplots()
     n = 501 # discretization
 
+    if methods is None:
+        methods = models.keys()
+
     # None
-    plt.plot([0, 1], [0, 1], label = 'None', color = 'grey', linestyle = 'dashed', alpha = 0.5)
+    plt.plot([0, 1], [0, 1], label = 'None', color = color_map['Base'], linestyle = 'dashed', alpha = 0.5)
 
     for method, model in models.items():
+        # skip, if so specified
+        if not method in methods:
+            continue
+        # get the relevant sub-calibrator, is so specified
         if not concept is None:
             model = model[concept]
+        
+        # plotting methods vary slightly depending on the method (particularly their labels)
+        # I've been working on standardizing them though
         if method == 'Histogram': # netcal implementation
             x_vals = model.calibrator.get_params()['_bin_bounds'][0]
             y_vals = model.calibrator.get_params()['_bin_map']
             y_vals = np.append(y_vals, y_vals[-1])
-            plt.step(x_vals, y_vals, where = 'post', label = 'Histogram', color = color_map['Histogram'])
+            plt.step(x_vals, y_vals, where = 'post', label = 'Histogram', color = color_map[method])
         elif method == 'Isotonic': # sklearn implementation
             x_vals = np.linspace(0, 1, num=n, endpoint=True)[1:-1]
             y_vals = model.calibrated_classifiers_[0].calibrators[0].predict(logit(x_vals))
-            plt.plot(x_vals, y_vals, label = 'Isotonic', color = color_map['Isotonic'])
-        elif method == 'Platt': # sklearn implementation
+            plt.plot(x_vals, y_vals, label = 'Isotonic', color = color_map[method])
+        elif method == 'Platt': # netcal implementation
+            a, b = model.info['A'], model.info['B']
+            
+            x_vals = np.linspace(0, 1, num=n, endpoint=True)
+            y_vals = model.calibrator.transform(x_vals)
+            plt.plot(x_vals, y_vals, label = 'Platt (A={:.2f}, B={:.2f})'.format(a, b), color = color_map[method])
+        elif method == 'Platt L2': # sklearn implementation
             calibrator = model.calibrated_classifiers_[0].calibrators[0]
-            a, b = -calibrator.a_, -calibrator.b_
+            a, b = model.info['A'], model.info['B']
             
             x_vals = np.linspace(0, 1, num=n, endpoint=True)[1:-1]
             y_vals = calibrator.predict(logit(x_vals))
-            plt.plot(x_vals, y_vals, label = 'Platt (A={:.2f}, B={:.2f})'.format(a, b), color = color_map['Platt'])
-        elif method == 'Platt v2': # netcal implementation
-            a = model.calibrator.weights[0]
-            b = model.calibrator.intercept[0]
+            plt.plot(x_vals, y_vals, label = 'Platt L2 (A={:.2f}, B={:.2f})'.format(a, b), color = color_map[method])
+        # elif method == 'Platt netcal': # netcal implementation
+        #     a, b = model.info['A'], model.info['B']
 
-            x_vals = np.linspace(0, 1, num=n, endpoint=True)
-            y_vals = model.calibrator.transform(x_vals)
-            plt.plot(x_vals, y_vals, label = 'Platt netcal (a={:.2f}, b={:.2f})'.format(a, b), color = colors[6])
-        elif method == 'Temperature old' : # manual implementation
-            T = model.temperature
-
-            x_vals_vec = np.array([1 - x_vals, x_vals]).T
-            y_vals = model.softmax(x_vals_vec / T)[:, 1]
-            plt.plot(x_vals, y_vals, label = 'Temperature (T={:.2f})'.format(T), color = colors[3])
-        elif method == 'Temperature v3': # bastardized interpretation of manual implementation
-            x_vals = np.linspace(0, 1, num=n, endpoint=True)[1:-1]
-            y_vals = expit(logit(x_vals) / model.temperature)
-            plt.plot(x_vals, y_vals, label = 'Temperature (T={:.2f})'.format(model.temperature), color = colors[3])
+        #     x_vals = np.linspace(0, 1, num=n, endpoint=True)
+        #     y_vals = model.calibrator.transform(x_vals)
+        #     plt.plot(x_vals, y_vals, label = 'Platt (A={:.2f}, B={:.2f})'.format(a, b), color = color_method[method])
         elif method == 'Temperature': # netcal implementation
-            T = 1 / model.calibrator.temperature[0]
+            T = model.info['T']
             
             x_vals = np.linspace(0, 1, num=n, endpoint=True)
             y_vals = model.calibrator.transform(x_vals)
-            plt.plot(x_vals, y_vals, label = 'Temperature (T={:.2f})'.format(T), color = color_map['Temperature'])
+            plt.plot(x_vals, y_vals, label = 'Temperature (T={:.2f})'.format(T), color = color_map[method])
+        # elif method == 'Temperature L2': # sklearn implementation
+        #     calibrator = model.calibrated_classifiers_[0].calibrators[0]
+        #     T = model.info['T']
+            
+        #     x_vals = np.linspace(0, 1, num=n, endpoint=True)[1:-1]
+        #     y_vals = calibrator.predict(logit(x_vals))
+        #     plt.plot(x_vals, y_vals, label = 'Temperature L2 (T={:.2f})'.format(T), color = color_map[method])
         elif method == 'Beta': # netcal implementation
-            tmp = model.calibrator.get_params()['_sites']
-            a, b = tmp['weights']['values']
-            c = tmp['bias']['values'][0]
+            a, b, c = model.info['a'], model.info['b'], model.info['c']
 
             x_vals = np.linspace(0, 1, num=n, endpoint=True)
             y_vals = model.calibrator.transform(x_vals)
-            plt.plot(x_vals, y_vals, label = 'Beta (a={:.2f}, b={:.2f}, c={:.2f})'.format(a, b, c), color = color_map['Beta'])
+            plt.plot(x_vals, y_vals, label = 'Beta (a={:.2f}, b={:.2f}, c={:.2f})'.format(a, b, c), color = color_map[method])
         else:
             print("{} plot not yet implemented".format(method))
             continue
