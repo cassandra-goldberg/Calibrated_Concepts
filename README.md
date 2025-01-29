@@ -15,7 +15,11 @@ source .venv/bin/activate
 # if you don't need to re-generate the embeddings the following are sufficient
 pip install numpy pandas matplotlib scipy scikit-learn torch netcal seaborn
 
-# else fixme
+# else fixme (huggingface_hub, transformers, etc.)
+
+# 3. Internal installation to make import paths work in Jupyter notebooks
+cd Experiments/utils
+pip install -e .
 ```
 
 Notebooks can be run using VSCode, Jupyter Notebook, etc. For example:

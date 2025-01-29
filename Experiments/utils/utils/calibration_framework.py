@@ -1,3 +1,15 @@
+'''
+Functions of the form (base_model, calibration set) -> calibrated_model
+for concept classification models
+
+Calibration methods implemented:
+- Temperature (no intercept logistic) scaling (unregularized)
+- Platt (logistic) scaling (unregularized and L2-regularized)
+- Beta scaling (unregularized)
+- Histogram binning
+- Isotonic regression
+'''
+
 import torch
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.frozen import FrozenEstimator

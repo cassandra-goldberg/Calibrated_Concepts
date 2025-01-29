@@ -1,3 +1,11 @@
+'''
+Performance metric computation and plotting functions
+- Correctness measures: Accuracy, F1, AUROC
+- Calibration measures: K1, K2, Kmax calibration error
+
+Also train/cal/test split utility for datasets
+'''
+
 import pandas as pd
 import numpy as np
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
@@ -33,12 +41,17 @@ def calibration_error(y_true, y_prob, measure='K1', bins=10):
         if prob_in_bin.item() > 0:
             fract_positives = y_true[in_bin].mean()
             mean_prob = y_prob[in_bin].mean()
+            #print(f'{measure} bin [{bin_lower:.4f}, {bin_upper:.4f}]')
+            #print(f'\ttrue {fract_positives:.4f} \t pred {mean_prob:.4f}')
             if measure == 'K1':
                 calib_error += np.abs(mean_prob - fract_positives) * prob_in_bin
             elif measure == 'K2':
                 calib_error += (np.abs(mean_prob - fract_positives)**2) * prob_in_bin
             elif measure == 'Kmax':
                 calib_error = max(calib_error, np.abs(mean_prob - fract_positives) * prob_in_bin)
+        #else:
+        #    print(f'{measure} bin [{bin_lower:.4f}, {bin_upper:.4f}] has no elements')
+
     return calib_error
 
 def get_test_classification_metric(models, metadata_df, cosine_similarity_df,

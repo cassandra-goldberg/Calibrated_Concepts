@@ -1,3 +1,8 @@
+'''
+Base concept model class definitions, training handlers, and utilities for preprocessing 
+input data (e.g. concept similarity scores)
+'''
+
 import numpy as np
 from scipy.optimize import minimize_scalar
 from sklearn.metrics import accuracy_score
